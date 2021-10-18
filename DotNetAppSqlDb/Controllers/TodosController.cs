@@ -1,12 +1,12 @@
 using System;
-using System.Collections.Generic;
-using System.Data;
 using System.Data.Entity;
 using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
-using DotNetAppSqlDb.Models;using System.Diagnostics;
+using DotNetAppSqlDb.Models;
+using System.Diagnostics;
+using System.IO;
 
 namespace DotNetAppSqlDb.Controllers
 {
@@ -44,24 +44,61 @@ namespace DotNetAppSqlDb.Controllers
             return View(new Todo { CreatedDate = DateTime.Now });
         }
 
-        // POST: Todos/Create
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "Description,CreatedDate,Name,ImagePath,ThumbnailPath")] Todo todo)
+        public ActionResult Create([Bind(Include = "Description,CreatedDate,Name,ImagePath,ThumbnailPath,ImageFile")] Todo todo)
         {
-            Trace.WriteLine("POST /Todos/Create");
-            if (ModelState.IsValid)
+            try
             {
-                db.Todoes.Add(todo);
-                db.SaveChanges();
-                return RedirectToAction("Index");
-            }
+                Trace.WriteLine("POST /Todos/Create");
+                if (ModelState.IsValid)
+                {
+                    //var temp = Request.Files.Count;
+                    //HttpPostedFileBase file = Request.Files["ImageData"];
+                    //int i = UploadImageInDataBase(file, todo);
+                    if (Request.Files.AllKeys.Any())
+                    {
+                        // Get the uploaded image from the Files collection
+                        var httpPostedFile = HttpContext.Request.Files[0];
 
-            return View(todo);
+                        if (httpPostedFile != null)
+                        {
+                        }
+                    }
+                    db.Todoes.Add(todo);
+                    db.SaveChanges();
+                    return RedirectToAction("Index");
+                }
+
+                return View(todo);
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Message = "Some exception has occurred, Sorry! : " + ex.Message;
+                return null;
+            }
         }
 
+        private int UploadImageInDataBase(HttpPostedFileBase file, Todo todo)
+        {
+            todo.ImagePath = null; // ConvertToBytes(file);
+            //var Content = new Content
+            //{
+            //    Title = contentViewModel.Title,
+            //    Description = contentViewModel.Description,
+            //    Contents = contentViewModel.Contents,
+            //    Image = contentViewModel.Image
+            //};
+            db.Todoes.Add(todo);
+            int i = db.SaveChanges();
+            return (i == 1) ? 1 : 0;            
+        }
+        private byte[] ConvertToBytes(HttpPostedFileBase image)
+        {
+            byte[] imageBytes = null;
+            BinaryReader reader = new BinaryReader(image.InputStream);
+            imageBytes = reader.ReadBytes((int)image.ContentLength);
+            return imageBytes;
+        }
         // GET: Todos/Edit/5
         public ActionResult Edit(int? id)
         {
@@ -78,12 +115,9 @@ namespace DotNetAppSqlDb.Controllers
             return View(todo);
         }
 
-        // POST: Todos/Edit/5
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "id,Description,CreatedDate")] Todo todo)
+        public ActionResult Edit([Bind(Include = "id,Name,Description,CreatedDate")] Todo todo)
         {
             Trace.WriteLine("POST /Todos/Edit/" + todo.ID);
             if (ModelState.IsValid)
@@ -130,6 +164,31 @@ namespace DotNetAppSqlDb.Controllers
                 db.Dispose();
             }
             base.Dispose(disposing);
+        }
+
+        [HttpGet]
+        public ActionResult Upload(int id)
+        {
+            Trace.WriteLine("POST /Todos/Upload/" + id);
+            Todo todo = db.Todoes.Find(id);            
+            return View(todo);
+        }
+        [HttpPost, ActionName("Upload")]
+        public ActionResult Upload(HttpPostedFileBase uploadedImage)
+        {
+            try
+            {
+                if (uploadedImage.ContentLength > 0)
+                {
+                    string imageFileName = Path.GetFileName(uploadedImage.FileName);
+                }
+            }
+            catch (Exception)
+            {
+                ViewBag.Message = "Some Error was thrown while uploading file to blob storage";
+            }
+
+            return View();
         }
     }
 }
