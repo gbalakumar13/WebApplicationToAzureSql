@@ -5,12 +5,6 @@
       "type": "mssql.azure",
       "connectionId": "GroProDbConnection",
       "secretStore": "AzureAppSettings"
-    },
-    "appInsights1": {
-      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('resourceGroupName')]/providers/Microsoft.Insights/components/DotNetAppSqlDb",
-      "type": "appInsights.azure",
-      "connectionId": "APPINSIGHTS_CONNECTIONSTRING",
-      "secretStore": "AzureAppSettings"
     }
   }
 }

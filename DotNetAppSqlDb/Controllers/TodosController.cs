@@ -7,6 +7,9 @@ using System.Web.Mvc;
 using DotNetAppSqlDb.Models;
 using System.Diagnostics;
 using System.IO;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using System.Configuration;
 
 namespace DotNetAppSqlDb.Controllers
 {
@@ -181,14 +184,64 @@ namespace DotNetAppSqlDb.Controllers
                 if (uploadedImage.ContentLength > 0)
                 {
                     string imageFileName = Path.GetFileName(uploadedImage.FileName);
+                    string folderPath = Path.Combine(Server.MapPath("~/UploadedImages"), imageFileName);
+                    uploadedImage.SaveAs(folderPath);
+                    string connectionString = ConfigurationManager.AppSettings["storageAccountConnectionString"];
+
+                    BlobServiceClient blobSvcClient= new BlobServiceClient(connectionString);                    
+                    BlobContainerClient container = CreateContainer(blobSvcClient, "products-container", true);
+                    UploadBlob(container, folderPath);
+                    //ListBlobs(container);
+                    //ListBlobs(container);
+                    //ListBlobsAsAnonimousUser("con2");
+
+                    //LeaseDemo(con1);
+
+                    //CreateServiceSASforBlobContainer(con1);
+                    //BlobClient blobClient = con1.GetBlobClient("shoes-2.png");
+
+                    //CreateServiceSASforBlob(blobClient);
+
+                    //string policyName = "PolicyOne";
+                    //CreateStoredAccessPolicy(con1, policyName);
+                    //CreateServiceSASforBlob(blobClient, policyName);
+                    //}
                 }
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                ViewBag.Message = "Some Error was thrown while uploading file to blob storage";
+                ViewBag.Message = "Some Error was thrown while uploading file to blob storage" + exception.Message;
             }
 
             return View();
         }
+
+        private BlobContainerClient CreateContainer(BlobServiceClient blobSvcClient, string containerName, bool isPublic)
+        {
+            BlobContainerClient container = blobSvcClient.GetBlobContainerClient(containerName);
+            if (!container.Exists())
+            {
+                container.Create();
+                Console.WriteLine($"{containerName} is Created\n");
+                if (isPublic)
+                {
+                    container.SetAccessPolicy(PublicAccessType.Blob);
+                }
+            }
+            return container;
+        }
+
+        private BlobClient UploadBlob(BlobContainerClient container, string path)
+        {
+            FileInfo fi = new FileInfo(path);
+            BlobClient blobClient = container.GetBlobClient(fi.Name);
+            if (!blobClient.Exists())
+            {
+                blobClient.Upload(path);
+                Console.WriteLine($"Access blob here  - {blobClient.Uri.AbsoluteUri}");
+            }
+            return blobClient;
+        }
+
     }
 }
