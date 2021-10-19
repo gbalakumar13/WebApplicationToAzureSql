@@ -10,6 +10,7 @@ using System.IO;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using System.Configuration;
+using Azure.Storage.Queues;
 
 namespace DotNetAppSqlDb.Controllers
 {
@@ -191,6 +192,7 @@ namespace DotNetAppSqlDb.Controllers
                     BlobServiceClient blobSvcClient= new BlobServiceClient(connectionString);                    
                     BlobContainerClient container = CreateContainer(blobSvcClient, "products-container", true);
                     UploadBlob(container, folderPath);
+
                     //ListBlobs(container);
                     //ListBlobs(container);
                     //ListBlobsAsAnonimousUser("con2");
@@ -206,6 +208,10 @@ namespace DotNetAppSqlDb.Controllers
                     //CreateStoredAccessPolicy(con1, policyName);
                     //CreateServiceSASforBlob(blobClient, policyName);
                     //}
+
+                    QueueClient queueClient = CreateQueue(connectionString,"productsqueue");
+                    string message = imageFileName +"$$$$$"+ DateTime.Now;
+                    queueClient.SendMessage(message);
                 }
             }
             catch (Exception exception)
@@ -243,5 +249,22 @@ namespace DotNetAppSqlDb.Controllers
             return blobClient;
         }
 
+
+        public QueueClient CreateQueue(string storageConString , string queueName)
+        {
+            try
+            {
+                string connectionString = storageConString;
+                QueueClient queueClient = new QueueClient(connectionString, queueName);
+                queueClient.CreateIfNotExists();
+                return queueClient;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception: {ex.Message}\n\n");
+                Console.WriteLine($"Make sure the Azurite storage emulator running and try again.");
+                return null;
+            }
+        }
     }
 }
