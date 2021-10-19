@@ -11,6 +11,9 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using System.Configuration;
 using Azure.Storage.Queues;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage;
+using Newtonsoft.Json;
 
 namespace DotNetAppSqlDb.Controllers
 {
@@ -189,11 +192,16 @@ namespace DotNetAppSqlDb.Controllers
                     uploadedImage.SaveAs(folderPath);
                     string connectionString = ConfigurationManager.AppSettings["storageAccountConnectionString"];
 
-                    BlobServiceClient blobSvcClient= new BlobServiceClient(connectionString);                    
+                    BlobServiceClient blobSvcClient = new BlobServiceClient(connectionString);
                     BlobContainerClient container = CreateContainer(blobSvcClient, "products-container", true);
                     BlobClient uploadedBlob = UploadBlob(container, folderPath);
-                    
-
+                    BlobContainerProperties props = container.GetProperties();
+                    string allMetadata = string.Empty;
+                    foreach (var item in props.Metadata)
+                    {
+                        allMetadata = allMetadata + item.Key + " - " + item.Value + "\n";
+                    }
+                    string finalMetadata = allMetadata;
                     //ListBlobs(container);
                     //ListBlobs(container);
                     //ListBlobsAsAnonimousUser("con2");
@@ -206,10 +214,6 @@ namespace DotNetAppSqlDb.Controllers
                     //CreateServiceSASforBlob(blobClient, policyName);
                     //}
 
-                    QueueClient queueClient = CreateQueue(connectionString,"productsqueue");
-                    string message = imageFileName +"$$$$$"+ DateTime.Now;
-                    queueClient.SendMessage(message);
-
                     if (ModelState.IsValid)
                     {
                         Todo fromDb = db.Todoes.Find(todo.ID);
@@ -217,7 +221,7 @@ namespace DotNetAppSqlDb.Controllers
                         db.Entry(fromDb).State = EntityState.Modified;
                         db.SaveChanges();
                     }
-                    
+                    PostMessageInQueue(connectionString, todo.ID, uploadedBlob.Uri.AbsoluteUri);
                     return RedirectToAction("Index");
                 }
             }
@@ -226,7 +230,17 @@ namespace DotNetAppSqlDb.Controllers
                 ViewBag.Message = "Some Error was thrown while uploading file to blob storage" + exception.Message;
             }
 
-            return View();
+            return View(todo);
+        }
+
+        private static void PostMessageInQueue(string connectionString, int id, string uri)
+        {
+            CloudQueueClient cloudQueueClient = CloudStorageAccount.Parse(connectionString).CreateCloudQueueClient();
+            CloudQueue thumbnailRequestQueue = cloudQueueClient.GetQueueReference("productsqueue");
+            thumbnailRequestQueue.CreateIfNotExists();
+            BlobInformation blobInfo = new BlobInformation() { Id = id, BlobUri = new Uri(uri) };
+            var queueMessage = new CloudQueueMessage(JsonConvert.SerializeObject(blobInfo));
+            thumbnailRequestQueue.AddMessage(queueMessage);
         }
 
         private BlobContainerClient CreateContainer(BlobServiceClient blobSvcClient, string containerName, bool isPublic)
