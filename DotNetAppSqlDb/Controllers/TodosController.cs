@@ -178,7 +178,7 @@ namespace DotNetAppSqlDb.Controllers
             return View(todo);
         }
         [HttpPost, ActionName("Upload")]
-        public ActionResult Upload(HttpPostedFileBase uploadedImage)
+        public ActionResult Upload([Bind(Include = "ID")] Todo todo, HttpPostedFileBase uploadedImage)
         {
             try
             {
@@ -191,19 +191,16 @@ namespace DotNetAppSqlDb.Controllers
 
                     BlobServiceClient blobSvcClient= new BlobServiceClient(connectionString);                    
                     BlobContainerClient container = CreateContainer(blobSvcClient, "products-container", true);
-                    UploadBlob(container, folderPath);
+                    BlobClient uploadedBlob = UploadBlob(container, folderPath);
+                    
 
                     //ListBlobs(container);
                     //ListBlobs(container);
                     //ListBlobsAsAnonimousUser("con2");
-
                     //LeaseDemo(con1);
-
                     //CreateServiceSASforBlobContainer(con1);
                     //BlobClient blobClient = con1.GetBlobClient("shoes-2.png");
-
                     //CreateServiceSASforBlob(blobClient);
-
                     //string policyName = "PolicyOne";
                     //CreateStoredAccessPolicy(con1, policyName);
                     //CreateServiceSASforBlob(blobClient, policyName);
@@ -212,6 +209,16 @@ namespace DotNetAppSqlDb.Controllers
                     QueueClient queueClient = CreateQueue(connectionString,"productsqueue");
                     string message = imageFileName +"$$$$$"+ DateTime.Now;
                     queueClient.SendMessage(message);
+
+                    if (ModelState.IsValid)
+                    {
+                        Todo fromDb = db.Todoes.Find(todo.ID);
+                        fromDb.ImagePath = uploadedBlob.Uri.AbsoluteUri;
+                        db.Entry(fromDb).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                    
+                    return RedirectToAction("Index");
                 }
             }
             catch (Exception exception)
@@ -243,8 +250,7 @@ namespace DotNetAppSqlDb.Controllers
             BlobClient blobClient = container.GetBlobClient(fi.Name);
             if (!blobClient.Exists())
             {
-                blobClient.Upload(path);
-                Console.WriteLine($"Access blob here  - {blobClient.Uri.AbsoluteUri}");
+                Azure.Response<BlobContentInfo> temp = blobClient.Upload(path);
             }
             return blobClient;
         }
