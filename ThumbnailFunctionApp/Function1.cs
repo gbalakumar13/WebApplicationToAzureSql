@@ -14,9 +14,8 @@ namespace ThumbnailFunctionApp
     {
         [FunctionName("Function1")]
         public static void GenerateThumbnail([QueueTrigger("productsqueue")]BlobInformation blobInfo,
-
-            [Blob("{BlobName}", FileAccess.Read)] Stream input,
-            [Blob("{BlobNameWithoutExtension}_thumbnail.jpg")] CloudBlockBlob outputBlob, TraceWriter log)
+            [Blob("products-container/{BlobName}", FileAccess.Read)] Stream input,
+            [Blob("products-container/{BlobNameWithoutExtension}_thumbnail.jpg")] CloudBlockBlob outputBlob, TraceWriter log)
         {
             
             using (Stream output = outputBlob.OpenWrite())
